@@ -3,7 +3,13 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/mobile_navigation"
-    app:startDestination="@+id/navigation_home">
+    app:startDestination="@+id/navigation_map">
+
+    <fragment
+        android:id="@+id/navigation_map"
+        android:name="com.endeavride.endeavridedriver.ui.maps.MapsFragment"
+        android:label="@string/title_map"
+        tools:layout="@layout/fragment_maps" />
 
     <fragment
         android:id="@+id/navigation_home"
@@ -22,4 +28,10 @@
         android:name="com.endeavride.endeavridedriver.ui.notifications.NotificationsFragment"
         android:label="@string/title_notifications"
         tools:layout="@layout/fragment_notifications" />
+
+    <fragment
+        android:id="@+id/navigation_login"
+        android:name="com.endeavride.endeavridedriver.ui.ui.login.LoginFragment"
+        android:label="login fragment"
+        tools:layout="@layout/fragment_login" />
 </navigation>
