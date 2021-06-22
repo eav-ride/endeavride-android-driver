@@ -3,6 +3,7 @@ package com.endeavride.endeavridedriver.ui.data
 import android.util.Log
 import com.endeavride.endeavridedriver.shared.NetworkUtils
 import com.endeavride.endeavridedriver.ui.data.model.Ride
+import com.endeavride.endeavridedriver.ui.data.model.RideDriveRecord
 import com.endeavride.endeavridedriver.ui.data.model.RideRequest
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.PolyUtil
@@ -30,25 +31,36 @@ class MapDataSource {
         }
     }
 
-//    suspend fun checkIfCurrentRideAvailable(): Result<Ride> {
-//        try {
-//            val result = NetworkUtils.getRequest("r")
-//            if (result.resData != null) {
-//                val ride = Json.decodeFromString<Ride>(result.resData)
-//                return Result.Success(ride)
-//            }
-//            return Result.Error(IOException(result.error))
-//        } catch (e: Throwable) {
-//            return Result.Error(IOException("check in progress (current) ride failed $e", e))
-//        }
-//    }
+    suspend fun acceptRequest(rid: String): Result<Ride> {
+        try {
+            val result = NetworkUtils.postRequest("r/d", Json.encodeToString(RideRequest(rid, null)))
 
-    fun getRideRequest(origin: LatLng, dest: LatLng) {
+            if (result.resData != null) {
+                val ride = Json.decodeFromString<Ride>(result.resData)
+                return Result.Success(ride)
+            }
+            return Result.Error(IOException(result.error))
+        } catch (e: Throwable) {
+            return Result.Error(IOException("accept ride failed $e", e))
+        }
+    }
 
+    suspend fun updateRideRequest(rid: String, status: Int): Result<Ride> {
+        try {
+            val result = NetworkUtils.postRequest("r/$rid", "status:$status")
+
+            if (result.resData != null) {
+                val ride = Json.decodeFromString<Ride>(result.resData)
+                return Result.Success(ride)
+            }
+            return Result.Error(IOException(result.error))
+        } catch (e: Throwable) {
+            return Result.Error(IOException("update ride failed $e", e))
+        }
     }
 
     suspend fun getDirection(origin: LatLng, dest: LatLng, waypoint: LatLng): MutableList<List<LatLng>> {
-        val result = NetworkUtils.getRequestWithFullpath("https://maps.googleapis.com/maps/api/directions/json",
+        val result = NetworkUtils.getRequestWithFullPath("https://maps.googleapis.com/maps/api/directions/json",
             listOf(
                 "origin" to "${origin.latitude},${origin.longitude}",
                 "destination" to "${dest.latitude},${dest.longitude}",
@@ -78,5 +90,33 @@ class MapDataSource {
             }
         }
         return path
+    }
+
+    suspend fun checkIfCurrentRideAvailable(): Result<Ride> {
+        try {
+            val result = NetworkUtils.getRequest("r/d/", null)
+            if (result.resData != null) {
+                val ride = Json.decodeFromString<Ride>(result.resData)
+                return Result.Success(ride)
+            }
+            return Result.Error(IOException(result.error))
+        } catch (e: Throwable) {
+            return Result.Error(IOException("check in progress (current) ride failed $e", e))
+        }
+    }
+
+    // drive record
+    suspend fun postDriveRecord(record: RideDriveRecord): IOException? {
+        return try {
+            val result = NetworkUtils.postRequest("dr/", Json.encodeToString(record))
+
+    //            if (result.resData != null) {
+    //                val ride = Json.decodeFromString<Ride>(result.resData)
+    //                return Result.Success(ride)
+    //            }
+            null
+        } catch (e: Throwable) {
+            IOException("accept ride failed $e", e)
+        }
     }
 }

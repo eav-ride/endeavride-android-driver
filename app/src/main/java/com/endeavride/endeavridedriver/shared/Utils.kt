@@ -3,17 +3,20 @@ package com.endeavride.endeavridedriver.shared
 import android.Manifest
 import android.app.AlertDialog
 import android.app.Dialog
+import android.content.Context
 import android.content.DialogInterface
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
+import androidx.core.content.edit
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.FragmentActivity
 import com.endeavride.endeavridedriver.R
+import com.endeavride.endeavridedriver.ui.ui.login.LoginFragment
 import com.google.android.gms.maps.model.LatLng
 
-object Utils {
+internal object Utils {
     @JvmStatic
     fun decodeRideDirection(direction: String): LatLng? {
         return decodeDirection(direction, 1)
@@ -143,4 +146,31 @@ object Utils {
             }
         }
     }
+
+    /**
+     * Provides access to SharedPreferences for location to Activities and Services.
+     */
+
+    const val KEY_FOREGROUND_ENABLED = "tracking_foreground_location"
+
+    /**
+     * Returns true if requesting location updates, otherwise returns false.
+     *
+     * @param context The [Context].
+     */
+    fun getStringPref(context: Context, key: String): String? =
+        context.getSharedPreferences(
+            key, Context.MODE_PRIVATE)
+            .getString(KEY_FOREGROUND_ENABLED, null)
+
+    /**
+     * Stores the location updates state in SharedPreferences.
+     * @param requestingLocationUpdates The location updates state.
+     */
+    fun saveStringPref(context: Context, value: String, key: String) =
+        context.getSharedPreferences(
+            key,
+            Context.MODE_PRIVATE).edit {
+            putString(KEY_FOREGROUND_ENABLED, value)
+        }
 }

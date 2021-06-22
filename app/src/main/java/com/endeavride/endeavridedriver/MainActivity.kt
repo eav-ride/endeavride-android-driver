@@ -42,20 +42,20 @@ class MainActivity : AppCompatActivity() {
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
-//        loginViewModel = ViewModelProvider(this, LoginViewModelFactory())
-//            .get(LoginViewModel::class.java)
-//
-//        loginViewModel.loggedInUser.observe(this,
-//            Observer { loggedInUser ->
-//                loggedInUser ?: return@Observer
-//                if (loggedInUser.displayName == "") {
-//                    navController.navigate(R.id.navigation_login)
-//                    navView.visibility = View.GONE
-//                } else {
-//                    navView.visibility = View.VISIBLE
-//                }
-//            })
-//        loginViewModel.loadUserInfoIfAvailable()
+        loginViewModel = ViewModelProvider(this, LoginViewModelFactory())
+            .get(LoginViewModel::class.java)
+
+        loginViewModel.loggedInUser.observe(this,
+            Observer { loggedInUser ->
+                loggedInUser ?: return@Observer
+                if (loggedInUser.displayName == "") {
+                    navController.navigate(R.id.navigation_login)
+                    navView.visibility = View.GONE
+                } else {
+                    navView.visibility = View.VISIBLE
+                }
+            })
+        loginViewModel.loadUserInfoIfAvailable()
 
         val currentBackStackEntry = navController.currentBackStackEntry!!
         val savedStateHandle = currentBackStackEntry.savedStateHandle

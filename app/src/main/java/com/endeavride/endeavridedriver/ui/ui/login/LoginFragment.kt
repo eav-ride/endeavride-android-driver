@@ -9,19 +9,18 @@ import androidx.fragment.app.Fragment
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
-import android.widget.Button
-import android.widget.EditText
-import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.fragment.findNavController
 import com.endeavride.endeavridedriver.R
 import com.endeavride.endeavridedriver.databinding.FragmentLoginBinding
+import com.endeavride.endeavridedriver.shared.Utils
 
 class LoginFragment : Fragment() {
     companion object {
@@ -35,6 +34,9 @@ class LoginFragment : Fragment() {
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
+
+    private var username: String? = null
+    private var password: String? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -62,12 +64,18 @@ class LoginFragment : Fragment() {
         val registerButton = binding.register
         val loadingProgressBar = binding.loading
 
+        context?.let {
+            usernameEditText.setText(Utils.getStringPref(it, "Username"))
+            passwordEditText.setText(Utils.getStringPref(it, "Password"))
+        }
+
         loginViewModel.loginFormState.observe(viewLifecycleOwner,
             Observer { loginFormState ->
                 if (loginFormState == null) {
                     return@Observer
                 }
                 loginButton.isEnabled = loginFormState.isDataValid
+                registerButton.isEnabled = loginFormState.isDataValid
                 loginFormState.usernameError?.let {
                     usernameEditText.error = getString(it)
                 }
@@ -84,6 +92,8 @@ class LoginFragment : Fragment() {
                     showLoginFailed(it)
                 }
                 loginResult.success?.let {
+                    username = usernameEditText.text.toString()
+                    password = passwordEditText.text.toString()
                     updateUiWithUser(it)
                 }
             })
@@ -142,13 +152,23 @@ class LoginFragment : Fragment() {
 
     private fun updateUiWithUser(model: LoggedInUserView) {
         val welcome = getString(R.string.welcome) + model.displayName
-        // TODO : initiate successful logged in experience
+
         val appContext = context?.applicationContext ?: return
+        // save email & password
+        context?.let { it1 ->
+            username?.let { Utils.saveStringPref(it1, "Username", it) }
+            password?.let { Utils.saveStringPref(it1, "Password", it) }
+        }
+
+        savedStateHandle.set(LOGIN_SUCCESSFUL, true)
+        findNavController().popBackStack()
+
         Toast.makeText(appContext, welcome, Toast.LENGTH_LONG).show()
     }
 
     private fun showLoginFailed(@StringRes errorString: Int) {
         val appContext = context?.applicationContext ?: return
+        Log.e("LoginFragment", "#K_Login failed! $errorString")
         Toast.makeText(appContext, errorString, Toast.LENGTH_LONG).show()
     }
 

@@ -23,7 +23,7 @@ class NetworkUtils {
             FuelManager.instance.basePath = "http://10.0.2.2:3300/"
         }
 
-        suspend fun getRequestWithFullpath(path: String, parameters: Parameters?): RequestResultModel {
+        suspend fun getRequestWithFullPath(path: String, parameters: Parameters?): RequestResultModel {
             val (request, response, result) = Fuel.get(path, parameters).awaitStringResponseResult()
             println(request)
             println(response)
@@ -39,7 +39,7 @@ class NetworkUtils {
 
         suspend fun getRequest(path: String, parameters: Parameters?): RequestResultModel {
             val fuelRequest = FuelManager.instance.get(path, parameters)
-            user?.userId?.let { fuelRequest.appendHeader("uid", it) }
+            user?.userId?.let { fuelRequest.appendHeader("did", it) }
             val (request, response, result) = fuelRequest.awaitStringResponseResult()
             println(request)
             println(response)
@@ -55,7 +55,7 @@ class NetworkUtils {
 
         suspend fun postRequest(path: String, body: String): RequestResultModel {
             val fuelRequest = FuelManager.instance.post(path)
-            user?.userId?.let { fuelRequest.appendHeader("uid", it) }
+            user?.userId?.let { fuelRequest.appendHeader("did", it) }
             val (request, response, result) = fuelRequest.body(body).awaitStringResponseResult()
             println(request)
             println(response)

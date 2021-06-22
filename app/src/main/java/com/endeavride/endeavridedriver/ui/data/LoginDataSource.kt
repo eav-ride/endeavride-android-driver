@@ -21,7 +21,7 @@ class LoginDataSource {
 
             if (result.resData != null) {
                 val user = Json.decodeFromString<User>(result.resData)
-                return Result.Success(LoggedInUser(user.uid, user.email))
+                return Result.Success(LoggedInUser(user.did, user.email))
             }
             return Result.Error(IOException(result.error))
         } catch (e: Throwable) {
@@ -38,7 +38,7 @@ class LoginDataSource {
 
             if (result.resData != null) {
                 val user = Json.decodeFromString<User>(result.resData)
-                return Result.Success(LoggedInUser(user.uid, user.email))
+                return Result.Success(LoggedInUser(user.did, user.email))
             }
             return Result.Error(IOException(result.error))
         } catch (e: Throwable) {

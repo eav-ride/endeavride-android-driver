@@ -12,7 +12,7 @@ data class LoggedInUser(
 
 @Serializable
 data class User (
-    val uid: String,
+    val did: String,
     val email: String
 )
 

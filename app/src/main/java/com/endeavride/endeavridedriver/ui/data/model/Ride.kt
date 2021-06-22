@@ -16,6 +16,16 @@ data class Ride (
 
 @Serializable
 data class RideRequest (
-    val direction: String,
-    val uid: String
+    val rid: String,
+    val status: Int? = null
+)
+
+@Serializable
+data class RideDriveRecord (
+    val rid: String,
+    val uid: String,
+    val did: String,
+    val status: Int,
+    val driver_location: String,
+    val create_time: String? = null
 )

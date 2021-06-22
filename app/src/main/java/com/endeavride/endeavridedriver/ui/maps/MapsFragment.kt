@@ -11,21 +11,25 @@ import android.os.Build
 import androidx.fragment.app.Fragment
 
 import android.os.Bundle
+import android.os.Looper
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import com.endeavride.endeavridedriver.R
 import com.endeavride.endeavridedriver.databinding.FragmentMapsBinding
 import com.endeavride.endeavridedriver.shared.NetworkUtils
 import com.endeavride.endeavridedriver.shared.Utils
 import com.endeavride.endeavridedriver.shared.Utils.isPermissionGranted
 import com.endeavride.endeavridedriver.shared.Utils.requestPermission
+import com.endeavride.endeavridedriver.ui.data.model.Ride
 import com.endeavride.endeavridedriver.ui.ui.login.LoginViewModel
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.*
@@ -38,6 +42,8 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PolylineOptions
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.io.IOException
 
 class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
@@ -52,6 +58,25 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
         const val LOCATION_PERMISSION_REQUEST_CODE = 1
         private const val REQUEST_CHECK_SETTINGS = 2
         private const val PLACE_PICKER_REQUEST = 3
+
+        private const val TAG = "MapsFragment"
+    }
+
+    enum class OrderStatus(val value: Int)
+    {
+        DEFAULT(-1),
+        UNASSIGNED(0),
+        ASSIGNING(1),
+        PICKING(2),
+        ARRIVED_USER_LOCATION(3),
+        STARTED(4),
+        FINISHED(5),
+        CANCELED(6);
+
+        companion object {
+            private val VALUES = values()
+            fun from(value: Int) = VALUES.firstOrNull { it.value == value }
+        }
     }
 
     //    private lateinit var progressBar: ProgressBar
@@ -79,6 +104,10 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
     private var offset = 0
     private var rid: String? = null
 
+    private var status: OrderStatus = OrderStatus.DEFAULT
+    private var isAutoPollingEnabled = false
+    private var isPostingDriveRecord = false
+
     private val callback = OnMapReadyCallback { googleMap ->
         /**
          * Manipulates the map once available.
@@ -90,24 +119,17 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
          * user has installed Google Play services and returned to the app.
          */
         map = googleMap
-//        map.setOnMapLongClickListener {
-//            map.clear()
-//            placeMarkerOnMap(it)
-//        }
         enableMyLocation()
 
-//        viewModel.checkIfCurrentRideAvailable()
+        viewModel.checkIfCurrentRideAvailable()
     }
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         _binding = FragmentMapsBinding.inflate(inflater, container, false)
-//        progressBar = binding.progressBar
-//        binding.toolbar.inflateMenu(R.menu.search_place_menu)
-//        setHasOptionsMenu(true)
         return binding.root
     }
 
@@ -119,24 +141,8 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
 
         val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment?
         mapFragment?.getMapAsync(callback)
-        binding.acceptButton.isClickable = false
 
-//        initRecyclerView()
-//        viewModel.events.observe(viewLifecycleOwner, Observer { event ->
-//            when(event) {
-//                is PlacesSearchEventLoading -> {
-//                    progressBar.isIndeterminate = true
-//                }
-//                is PlacesSearchEventError -> {
-//                    progressBar.isIndeterminate = false
-//                }
-//                is PlacesSearchEventFound -> {
-//                    progressBar.isIndeterminate = false
-//                    adapter.setPredictions(event.places)
-//                }
-//            }
-//            Log.d("Map", "#K_$event")
-//        })
+        reloadData()
 
         viewModel.mapDirectionResult.observe(viewLifecycleOwner,
             Observer { path ->
@@ -145,14 +151,21 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
                 }
             })
 
+        viewModel.driveRecordResult.observe(viewLifecycleOwner, Observer { error ->
+            error?.let { Log.e("Error", "Post drive record error: ${error.message}") }
+            if (isPostingDriveRecord) {
+                lastLocation?.let { viewModel.postDriveRecord(0, it) }
+            }
+        })
+
         viewModel.currentRide.observe(viewLifecycleOwner,
             Observer { ride ->
                 println("#K_current ride $ride")
+                setStatus(ride)
                 if (ride == null) {
                     // add mark and send request when app closed if currently requesting task
                     return@Observer
                 }
-                ride ?: return@Observer
                 val dest = Utils.decodeRideDirection(ride.direction)
                 val customer = Utils.decodeRideSource(ride.direction)
                 if (dest != null && customer != null) {
@@ -166,25 +179,6 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
                     requestDirection()
                 }
             })
-
-        binding.requestButton.setOnClickListener {
-            map.clear()
-//            dest = null
-            viewModel.requestAvailableRideTask(offset, rid)
-        }
-
-        binding.acceptButton.setOnClickListener {
-            Log.d("Debug", "#K_send driver request with points $lastLocation and $dest")
-//            dest?.let { it1 -> NetworkUtils.user?.userId?.let { it2 ->
-//                lastLocation?.let { it3 -> LatLng(it3.latitude, it3.longitude) }?.let { it4 ->
-//                    viewModel.createRide(
-//                        it4, it1,
-//                        it2
-//                    )
-//                }
-//            } }
-//            Toast.makeText(requireContext(), "send driver request with points $lastLocation and $dest", Toast.LENGTH_SHORT).show()
-        }
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
 
@@ -202,6 +196,161 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
             }
         }
         createLocationRequest()
+    }
+
+    private fun setStatus(ride: Ride?) {
+        val rideStatus = ride?.status ?: -1
+        status = OrderStatus.from(rideStatus) ?: OrderStatus.DEFAULT
+
+        reloadData()
+    }
+
+    private fun reloadData() {
+        if (status == OrderStatus.ASSIGNING) {
+            binding.requestButton.text = "Change Task"
+            binding.requestButton.isClickable = true
+            binding.acceptButton.text = "Accept Task"
+            binding.acceptButton.isEnabled = true
+
+            binding.requestButton.setOnClickListener {
+                map.clear()
+                isAutoPollingEnabled = true
+                viewModel.requestAvailableRideTask(offset, rid)
+            }
+
+            binding.acceptButton.setOnClickListener {
+                if (rid == null) {
+                    Toast.makeText(requireContext(), "No available Ride request to accept!", Toast.LENGTH_SHORT).show()
+                }
+                rid?.let { it1 -> viewModel.acceptRideRequest(it1) }
+            }
+        } else if (status == OrderStatus.PICKING) {
+            binding.requestButton.text = "Start Picking Up User"
+            binding.requestButton.isClickable = false
+            binding.acceptButton.text = "Arrived at User Place"
+            binding.acceptButton.isEnabled = true
+
+            // start updating GPS to server
+            if (!isPostingDriveRecord) {
+                Log.d(TAG, "Start Posting GPS Records")
+                isPostingDriveRecord = true
+                try {
+                    fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper())
+
+                    if (lastLocation == null) {
+                        Log.e(TAG, "No last location found!")
+                    }
+                    lastLocation?.let { viewModel.postDriveRecord(0, it) }
+                } catch (unlikely: SecurityException) {
+                    Log.e(TAG, "Lost location permissions. Couldn't remove updates. $unlikely")
+                }
+            }
+
+            binding.acceptButton.setOnClickListener {
+                isPostingDriveRecord = false
+                val removeTask = fusedLocationClient.removeLocationUpdates(locationCallback)
+                removeTask.addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        Log.d(TAG, "Location Callback removed.")
+                    } else {
+                        Log.d(TAG, "Failed to remove Location Callback.")
+                    }
+                }
+                //TODO: send arrived at user location request
+                rid?.let { it1 -> viewModel.updateRideRequest(it1, OrderStatus.ARRIVED_USER_LOCATION.value) }
+            }
+        } else if (status == OrderStatus.ARRIVED_USER_LOCATION) {
+            binding.requestButton.text = "User Onboarded Start Driving"
+            binding.requestButton.isClickable = true
+            binding.acceptButton.text = "Arrived at User Place"
+            binding.acceptButton.isEnabled = false
+
+            binding.requestButton.setOnClickListener {
+                //TODO: send start drive user to destination request
+                rid?.let { it1 -> viewModel.updateRideRequest(it1, OrderStatus.STARTED.value) }
+            }
+        } else if (status == OrderStatus.STARTED) {
+            binding.requestButton.text = "Start Driving User to Destination"
+            binding.requestButton.isClickable = false
+            binding.acceptButton.text = "Arrived at Destination"
+            binding.acceptButton.isEnabled = true
+
+            // start updating GPS to server
+            if (!isPostingDriveRecord) {
+                Log.d(TAG, "Start Posting GPS Records")
+                isPostingDriveRecord = true
+                try {
+                    fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper())
+
+                    if (lastLocation == null) {
+                        Log.e(TAG, "No last location found!")
+                    }
+                    lastLocation?.let { viewModel.postDriveRecord(0, it) }
+                } catch (unlikely: SecurityException) {
+                    Log.e(TAG, "Lost location permissions. Couldn't remove updates. $unlikely")
+                }
+            }
+
+            binding.acceptButton.setOnClickListener {
+                isPostingDriveRecord = false
+                val removeTask = fusedLocationClient.removeLocationUpdates(locationCallback)
+                removeTask.addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        Log.d(TAG, "Location Callback removed.")
+                    } else {
+                        Log.d(TAG, "Failed to remove Location Callback.")
+                    }
+                }
+                //TODO: send finish task request
+                rid?.let { it1 -> viewModel.updateRideRequest(it1, OrderStatus.FINISHED.value) }
+            }
+        } else if (status == OrderStatus.FINISHED) {
+            Toast.makeText(requireContext(), "Good Job!!", Toast.LENGTH_SHORT).show()
+            isAutoPollingEnabled = false
+            defaultStatusActions()
+        } else {
+            // DEFAULT
+            defaultStatusActions()
+        }
+    }
+
+    private fun defaultStatusActions() {
+        if (isAutoPollingEnabled) {
+            binding.requestButton.text = "Requesting..."
+            binding.requestButton.isClickable = false
+            binding.acceptButton.text = "Stop"
+            binding.acceptButton.isEnabled = true
+
+            binding.requestButton.setOnClickListener {
+                map.clear()
+                isAutoPollingEnabled = true
+                viewModel.requestAvailableRideTask(offset, rid)
+            }
+
+            binding.acceptButton.setOnClickListener {
+                map.clear()
+                isAutoPollingEnabled = false
+                reloadData()
+            }
+
+            viewModel.requestAvailableRideTask(offset, rid)
+        } else {
+            binding.requestButton.text = "Request Tasks"
+            binding.requestButton.isClickable = true
+            binding.acceptButton.text = "-"
+            binding.acceptButton.isEnabled = false
+
+            binding.requestButton.setOnClickListener {
+                map.clear()
+                isAutoPollingEnabled = true
+                viewModel.requestAvailableRideTask(offset, rid)
+            }
+
+            binding.acceptButton.setOnClickListener {
+                map.clear()
+                dest = null
+            }
+        }
     }
 
     private fun requestDirection() {
