@@ -8,7 +8,8 @@ data class Ride (
     val status: Int,
     val uid: String,
     val did: String? = null,
-    val direction: String,
+    val user_location: String,
+    val destination: String,
     val create_time: String? = null,
     val start_time: String? = null,
     val finish_time: String? = null

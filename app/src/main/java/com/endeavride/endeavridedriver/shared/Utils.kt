@@ -17,19 +17,8 @@ import com.endeavride.endeavridedriver.ui.ui.login.LoginFragment
 import com.google.android.gms.maps.model.LatLng
 
 internal object Utils {
-    @JvmStatic
-    fun decodeRideDirection(direction: String): LatLng? {
-        return decodeDirection(direction, 1)
-    }
-    @JvmStatic
-    fun decodeRideSource(direction: String): LatLng? {
-        return decodeDirection(direction, 0)
-    }
-
-    private fun decodeDirection(direction: String, dirIndex: Int): LatLng? {
-        val dir = direction.split(";")
-        if (dir.size != 2) return null
-        val point = dir[dirIndex].split(",")
+    fun decodeLocationString(location: String):LatLng? {
+        val point = location.split(",")
         if (point.size != 2) return null
         return LatLng(point[0].toDouble(), point[1].toDouble())
     }
@@ -171,6 +160,6 @@ internal object Utils {
         context.getSharedPreferences(
             key,
             Context.MODE_PRIVATE).edit {
-            putString(KEY_FOREGROUND_ENABLED, value)
+            putString(KEY_FOREGROUND_ENABLED, value).commit()
         }
 }

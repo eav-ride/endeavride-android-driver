@@ -35,9 +35,6 @@ class LoginFragment : Fragment() {
     // onDestroyView.
     private val binding get() = _binding!!
 
-    private var username: String? = null
-    private var password: String? = null
-
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -64,9 +61,13 @@ class LoginFragment : Fragment() {
         val registerButton = binding.register
         val loadingProgressBar = binding.loading
 
-        context?.let {
+        activity?.let {
             usernameEditText.setText(Utils.getStringPref(it, "Username"))
             passwordEditText.setText(Utils.getStringPref(it, "Password"))
+            if (usernameEditText.text != null && passwordEditText.text != null) {
+                loginButton.isEnabled = true
+                registerButton.isEnabled = true
+            }
         }
 
         loginViewModel.loginFormState.observe(viewLifecycleOwner,
@@ -92,8 +93,11 @@ class LoginFragment : Fragment() {
                     showLoginFailed(it)
                 }
                 loginResult.success?.let {
-                    username = usernameEditText.text.toString()
-                    password = passwordEditText.text.toString()
+                    // save email & password
+                    activity?.let { it1 ->
+                        Utils.saveStringPref(it1, usernameEditText.text.toString(), "Username")
+                        Utils.saveStringPref(it1, passwordEditText.text.toString(), "Password")
+                    }
                     updateUiWithUser(it)
                 }
             })
@@ -154,11 +158,6 @@ class LoginFragment : Fragment() {
         val welcome = getString(R.string.welcome) + model.displayName
 
         val appContext = context?.applicationContext ?: return
-        // save email & password
-        context?.let { it1 ->
-            username?.let { Utils.saveStringPref(it1, "Username", it) }
-            password?.let { Utils.saveStringPref(it1, "Password", it) }
-        }
 
         savedStateHandle.set(LOGIN_SUCCESSFUL, true)
         findNavController().popBackStack()

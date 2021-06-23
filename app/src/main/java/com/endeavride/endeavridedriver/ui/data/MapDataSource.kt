@@ -33,7 +33,7 @@ class MapDataSource {
 
     suspend fun acceptRequest(rid: String): Result<Ride> {
         try {
-            val result = NetworkUtils.postRequest("r/d", Json.encodeToString(RideRequest(rid, null)))
+            val result = NetworkUtils.postRequest("r/d", Json.encodeToString(mapOf("rid" to rid)))
 
             if (result.resData != null) {
                 val ride = Json.decodeFromString<Ride>(result.resData)
@@ -47,7 +47,7 @@ class MapDataSource {
 
     suspend fun updateRideRequest(rid: String, status: Int): Result<Ride> {
         try {
-            val result = NetworkUtils.postRequest("r/$rid", "status:$status")
+            val result = NetworkUtils.postRequest("r/$rid", Json.encodeToString(mapOf("status" to status)))
 
             if (result.resData != null) {
                 val ride = Json.decodeFromString<Ride>(result.resData)

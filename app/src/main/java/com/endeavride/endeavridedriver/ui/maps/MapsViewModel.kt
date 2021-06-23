@@ -22,8 +22,8 @@ class MapsViewModel(
     private val _mapDirectionResult = MutableLiveData<MutableList<List<LatLng>>>()
     val mapDirectionResult: LiveData<MutableList<List<LatLng>>> = _mapDirectionResult
 
-    private val _currentRide = MutableLiveData<Ride>()
-    val currentRide: LiveData<Ride> = _currentRide
+    private val _currentRide = MutableLiveData<Ride?>()
+    val currentRide: LiveData<Ride?> = _currentRide
 
     private val _driveRecordResult = MutableLiveData<IOException?>()
     val driveRecordResult: LiveData<IOException?> = _driveRecordResult
@@ -37,11 +37,14 @@ class MapsViewModel(
         }
     }
 
-    fun requestAvailableRideTask(offset: Int, rid: String?) {
+    fun requestAvailableRideTask(delayTime: Long = 0, offset: Int, rid: String?) {
         viewModelScope.launch {
+            delay(delayTime)
             val result = dataSource.requestAvailableRideTask(offset, rid)
             if (result is Result.Success) {
                 _currentRide.value = result.data
+            } else {
+                _currentRide.value = null
             }
         }
     }

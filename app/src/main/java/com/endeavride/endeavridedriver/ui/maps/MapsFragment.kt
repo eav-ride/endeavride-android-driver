@@ -166,9 +166,9 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
                     // add mark and send request when app closed if currently requesting task
                     return@Observer
                 }
-                val dest = Utils.decodeRideDirection(ride.direction)
-                val customer = Utils.decodeRideSource(ride.direction)
-                if (dest != null && customer != null) {
+                val dest = Utils.decodeLocationString(ride.destination)
+                val customer = Utils.decodeLocationString(ride.user_location)
+                if (dest != null && customer != null && this.dest != dest) {
                     placeMarkerOnMap(dest, "destination")
                     placeMarkerOnMap(customer, "customer")
                     this.dest = dest
@@ -215,7 +215,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
             binding.requestButton.setOnClickListener {
                 map.clear()
                 isAutoPollingEnabled = true
-                viewModel.requestAvailableRideTask(offset, rid)
+                viewModel.requestAvailableRideTask(0, offset, rid)
             }
 
             binding.acceptButton.setOnClickListener {
@@ -315,6 +315,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
     }
 
     private fun defaultStatusActions() {
+        isPostingDriveRecord = false
         if (isAutoPollingEnabled) {
             binding.requestButton.text = "Requesting..."
             binding.requestButton.isClickable = false
@@ -324,7 +325,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
             binding.requestButton.setOnClickListener {
                 map.clear()
                 isAutoPollingEnabled = true
-                viewModel.requestAvailableRideTask(offset, rid)
+                viewModel.requestAvailableRideTask(0, offset, rid)
             }
 
             binding.acceptButton.setOnClickListener {
@@ -333,7 +334,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
                 reloadData()
             }
 
-            viewModel.requestAvailableRideTask(offset, rid)
+            viewModel.requestAvailableRideTask(3000, offset, rid)
         } else {
             binding.requestButton.text = "Request Tasks"
             binding.requestButton.isClickable = true
@@ -343,7 +344,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
             binding.requestButton.setOnClickListener {
                 map.clear()
                 isAutoPollingEnabled = true
-                viewModel.requestAvailableRideTask(offset, rid)
+                viewModel.requestAvailableRideTask(0, offset, rid)
             }
 
             binding.acceptButton.setOnClickListener {
