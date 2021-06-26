@@ -188,6 +188,11 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
 
                 lastLocation = p0.lastLocation
 //                placeMarkerOnMap(LatLng(lastLocation.latitude, lastLocation.longitude))
+                lastLocation.let {
+                    if (isPostingDriveRecord && it != null) {
+                        map.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(it.latitude, it.longitude), 12f))
+                    }
+                }
 
                 if (needDirection) {
                     needDirection = false
@@ -216,12 +221,18 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
                 map.clear()
                 isAutoPollingEnabled = true
                 viewModel.requestAvailableRideTask(0, offset, rid)
+
+                dest = null
+                customer = null
+                rid = null
             }
 
             binding.acceptButton.setOnClickListener {
                 if (rid == null) {
                     Toast.makeText(requireContext(), "No available Ride request to accept!", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
                 }
+                startLocationUpdates()
                 rid?.let { it1 -> viewModel.acceptRideRequest(it1) }
             }
         } else if (status == OrderStatus.PICKING) {
@@ -256,7 +267,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
                         Log.d(TAG, "Failed to remove Location Callback.")
                     }
                 }
-                //TODO: send arrived at user location request
+                //send arrived at user location request
                 rid?.let { it1 -> viewModel.updateRideRequest(it1, OrderStatus.ARRIVED_USER_LOCATION.value) }
             }
         } else if (status == OrderStatus.ARRIVED_USER_LOCATION) {
@@ -266,7 +277,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
             binding.acceptButton.isEnabled = false
 
             binding.requestButton.setOnClickListener {
-                //TODO: send start drive user to destination request
+                //send start drive user to destination request
                 rid?.let { it1 -> viewModel.updateRideRequest(it1, OrderStatus.STARTED.value) }
             }
         } else if (status == OrderStatus.STARTED) {
@@ -301,11 +312,12 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
                         Log.d(TAG, "Failed to remove Location Callback.")
                     }
                 }
-                //TODO: send finish task request
+                //send finish task request
                 rid?.let { it1 -> viewModel.updateRideRequest(it1, OrderStatus.FINISHED.value) }
             }
         } else if (status == OrderStatus.FINISHED) {
             Toast.makeText(requireContext(), "Good Job!!", Toast.LENGTH_SHORT).show()
+            map.clear()
             isAutoPollingEnabled = false
             defaultStatusActions()
         } else {
@@ -331,6 +343,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
             binding.acceptButton.setOnClickListener {
                 map.clear()
                 isAutoPollingEnabled = false
+                offset = 0
                 reloadData()
             }
 
