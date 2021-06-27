@@ -16,10 +16,14 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
+import androidx.fragment.app.FragmentContainerView
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -107,6 +111,11 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
+    private lateinit var requestButton: Button
+    private lateinit var acceptButton: Button
+    private lateinit var actionButton: Button
+    private lateinit var textView: TextView
+    private lateinit var buttonContainer: View
 
     private var dest: LatLng? = null
     private var customer: LatLng? = null
@@ -141,6 +150,11 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentMapsBinding.inflate(inflater, container, false)
+        requestButton = binding.requestButton
+        acceptButton = binding.acceptButton
+        actionButton = binding.actionButton
+        textView = binding.textView
+        buttonContainer = binding.view
         return binding.root
     }
 
@@ -217,12 +231,18 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
 
     private fun reloadData() {
         if (status == OrderStatus.ASSIGNING) {
-            binding.requestButton.text = "Change Task"
-            binding.requestButton.isClickable = true
-            binding.acceptButton.text = "Accept Task"
-            binding.acceptButton.isEnabled = true
+            requestButton.text = "Change Task"
+            acceptButton.text = "Accept Task"
+            textView.text = if (type == OrderType.HOME_SERVICE) {
+                "Home service task"
+            } else {
+                "Ride service task"
+            }
+            actionButton.isVisible = false
+            requestButton.isVisible = true
+            acceptButton.isVisible = true
 
-            binding.requestButton.setOnClickListener {
+            requestButton.setOnClickListener {
                 map.clear()
                 isAutoPollingEnabled = true
                 offset += 1
@@ -233,7 +253,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
                 rid = null
             }
 
-            binding.acceptButton.setOnClickListener {
+            acceptButton.setOnClickListener {
                 if (rid == null) {
                     Toast.makeText(requireContext(), "No available Ride request to accept!", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
@@ -244,10 +264,11 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
 
             requestDirectionIfNeeded()
         } else if (status == OrderStatus.PICKING) {
-            binding.requestButton.text = "Start Picking Up User"
-            binding.requestButton.isClickable = false
-            binding.acceptButton.text = "Arrived at User Place"
-            binding.acceptButton.isEnabled = true
+            textView.text = "Start driving to user"
+            actionButton.text = "Arrived at User Place"
+            actionButton.isVisible = true
+            requestButton.isVisible = false
+            acceptButton.isVisible = false
 
             // start updating GPS to server
             if (!isPostingDriveRecord) {
@@ -265,7 +286,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
                 }
             }
 
-            binding.acceptButton.setOnClickListener {
+            actionButton.setOnClickListener {
                 isPostingDriveRecord = false
                 val removeTask = fusedLocationClient.removeLocationUpdates(locationCallback)
                 removeTask.addOnCompleteListener { task ->
@@ -280,21 +301,27 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
             }
             requestDirectionIfNeeded()
         } else if (status == OrderStatus.ARRIVED_USER_LOCATION) {
-            binding.requestButton.text = "User Onboarded Start Driving"
-            binding.requestButton.isClickable = true
-            binding.acceptButton.text = "Arrived at User Place"
-            binding.acceptButton.isEnabled = false
+            textView.text = "Waiting user to get on ride"
+            actionButton.text = "User Onboarded Start Driving"
+            actionButton.isVisible = true
+            requestButton.isVisible = false
+            acceptButton.isVisible = false
 
-            binding.requestButton.setOnClickListener {
+            actionButton.setOnClickListener {
                 //send start drive user to destination request
                 rid?.let { it1 -> viewModel.updateRideRequest(it1, OrderStatus.STARTED.value) }
             }
             requestDirectionIfNeeded()
         } else if (status == OrderStatus.STARTED) {
-            binding.requestButton.text = "Start Driving User to Destination"
-            binding.requestButton.isClickable = false
-            binding.acceptButton.text = "Arrived at Destination"
-            binding.acceptButton.isEnabled = true
+            requestButton.text = "Start Driving User to Destination"
+            requestButton.isClickable = false
+            acceptButton.text = "Arrived at Destination"
+            acceptButton.isEnabled = true
+            textView.text = "Start driving to destination..."
+            actionButton.text = "Arrived at Destination"
+            actionButton.isVisible = true
+            requestButton.isVisible = false
+            acceptButton.isVisible = false
 
             // start updating GPS to server
             if (!isPostingDriveRecord) {
@@ -312,7 +339,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
                 }
             }
 
-            binding.acceptButton.setOnClickListener {
+            actionButton.setOnClickListener {
                 isPostingDriveRecord = false
                 val removeTask = fusedLocationClient.removeLocationUpdates(locationCallback)
                 removeTask.addOnCompleteListener { task ->
@@ -355,18 +382,20 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
         isPostingDriveRecord = false
         needDirection = true
         if (isAutoPollingEnabled) {
-            binding.requestButton.text = "Requesting..."
-            binding.requestButton.isClickable = false
-            binding.acceptButton.text = "Stop"
-            binding.acceptButton.isEnabled = true
+            requestButton.text = "Requesting..."
+            acceptButton.text = "Stop"
+            textView.text = "Requesting..."
+            actionButton.isVisible = false
+            requestButton.isVisible = true
+            acceptButton.isVisible = true
 
-            binding.requestButton.setOnClickListener {
+            requestButton.setOnClickListener {
                 map.clear()
                 isAutoPollingEnabled = true
                 viewModel.requestAvailableRideTask(0, offset, rid)
             }
 
-            binding.acceptButton.setOnClickListener {
+            acceptButton.setOnClickListener {
                 map.clear()
                 resetAttributes()
                 reloadData()
@@ -374,20 +403,16 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
 
             viewModel.requestAvailableRideTask(3000, offset, rid)
         } else {
-            binding.requestButton.text = "Request Tasks"
-            binding.requestButton.isClickable = true
-            binding.acceptButton.text = "-"
-            binding.acceptButton.isEnabled = false
+            actionButton.text = "Request Tasks"
+            textView.text = "Click 'Request Task' to start"
+            actionButton.isVisible = true
+            requestButton.isVisible = false
+            acceptButton.isVisible = false
 
-            binding.requestButton.setOnClickListener {
+            actionButton.setOnClickListener {
                 map.clear()
                 isAutoPollingEnabled = true
                 viewModel.requestAvailableRideTask(0, offset, rid)
-            }
-
-            binding.acceptButton.setOnClickListener {
-                map.clear()
-                dest = null
             }
         }
     }
