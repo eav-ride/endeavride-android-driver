@@ -79,6 +79,16 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
         }
     }
 
+    enum class OrderType(val value: Int) {
+        RIDE_SERVICE(0),
+        HOME_SERVICE(1);
+
+        companion object {
+            private val VALUES = OrderType.values()
+            fun from(value: Int) = VALUES.firstOrNull { it.value == value }
+        }
+    }
+
     //    private lateinit var progressBar: ProgressBar
 //    private val adapter = PlacePredictionAdapter()
     private lateinit var viewModel: MapsViewModel
@@ -105,6 +115,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
     private var rid: String? = null
 
     private var status: OrderStatus = OrderStatus.DEFAULT
+    private var type: OrderType = OrderType.RIDE_SERVICE
     private var isAutoPollingEnabled = false
     private var isPostingDriveRecord = false
 
@@ -161,23 +172,22 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
         viewModel.currentRide.observe(viewLifecycleOwner,
             Observer { ride ->
                 println("#K_current ride $ride")
-                setStatus(ride)
                 if (ride == null) {
                     // add mark and send request when app closed if currently requesting task
+                    this.dest = null
+                    this.customer = null
+                    this.rid = null
+                    setStatus(ride)
                     return@Observer
                 }
-                val dest = Utils.decodeLocationString(ride.destination)
-                val customer = Utils.decodeLocationString(ride.user_location)
-                if (dest != null && customer != null && this.dest != dest) {
-                    placeMarkerOnMap(dest, "destination")
-                    placeMarkerOnMap(customer, "customer")
-                    this.dest = dest
-                    this.customer = customer
-                    this.rid = ride.rid
-                    this.offset += 1
-                    binding.acceptButton.isClickable = true
-                    requestDirection()
+                dest = Utils.decodeLocationString(ride.destination)
+                customer = if (ride.user_location == null) {
+                    null
+                } else {
+                    Utils.decodeLocationString(ride.user_location)
                 }
+                rid = ride.rid
+                setStatus(ride)
             })
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
@@ -192,11 +202,6 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
                     if (isPostingDriveRecord && it != null) {
                         map.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(it.latitude, it.longitude), 12f))
                     }
-                }
-
-                if (needDirection) {
-                    needDirection = false
-                    requestDirection()
                 }
             }
         }
@@ -220,6 +225,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
             binding.requestButton.setOnClickListener {
                 map.clear()
                 isAutoPollingEnabled = true
+                offset += 1
                 viewModel.requestAvailableRideTask(0, offset, rid)
 
                 dest = null
@@ -233,8 +239,10 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
                     return@setOnClickListener
                 }
                 startLocationUpdates()
-                rid?.let { it1 -> viewModel.acceptRideRequest(it1) }
+                rid?.let { it1 -> viewModel.acceptRideRequest(it1, type.value) }
             }
+
+            requestDirectionIfNeeded()
         } else if (status == OrderStatus.PICKING) {
             binding.requestButton.text = "Start Picking Up User"
             binding.requestButton.isClickable = false
@@ -270,6 +278,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
                 //send arrived at user location request
                 rid?.let { it1 -> viewModel.updateRideRequest(it1, OrderStatus.ARRIVED_USER_LOCATION.value) }
             }
+            requestDirectionIfNeeded()
         } else if (status == OrderStatus.ARRIVED_USER_LOCATION) {
             binding.requestButton.text = "User Onboarded Start Driving"
             binding.requestButton.isClickable = true
@@ -280,6 +289,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
                 //send start drive user to destination request
                 rid?.let { it1 -> viewModel.updateRideRequest(it1, OrderStatus.STARTED.value) }
             }
+            requestDirectionIfNeeded()
         } else if (status == OrderStatus.STARTED) {
             binding.requestButton.text = "Start Driving User to Destination"
             binding.requestButton.isClickable = false
@@ -315,10 +325,16 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
                 //send finish task request
                 rid?.let { it1 -> viewModel.updateRideRequest(it1, OrderStatus.FINISHED.value) }
             }
+            requestDirectionIfNeeded()
         } else if (status == OrderStatus.FINISHED) {
             Toast.makeText(requireContext(), "Good Job!!", Toast.LENGTH_SHORT).show()
             map.clear()
-            isAutoPollingEnabled = false
+            resetAttributes()
+            defaultStatusActions()
+        } else if (status == OrderStatus.CANCELED) {
+            Toast.makeText(requireContext(), "User has canceled the request!", Toast.LENGTH_SHORT).show()
+            map.clear()
+            resetAttributes()
             defaultStatusActions()
         } else {
             // DEFAULT
@@ -326,8 +342,18 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
         }
     }
 
+    private fun resetAttributes() {
+        isAutoPollingEnabled = false
+        needDirection = true
+        offset = 0
+        rid = null
+        dest = null
+        customer = null
+    }
+
     private fun defaultStatusActions() {
         isPostingDriveRecord = false
+        needDirection = true
         if (isAutoPollingEnabled) {
             binding.requestButton.text = "Requesting..."
             binding.requestButton.isClickable = false
@@ -342,8 +368,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
 
             binding.acceptButton.setOnClickListener {
                 map.clear()
-                isAutoPollingEnabled = false
-                offset = 0
+                resetAttributes()
                 reloadData()
             }
 
@@ -373,12 +398,21 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
             return
         }
         dest?.let { it1 -> lastLocation?.let { LatLng(it.latitude, it.longitude) }?.let {
-            customer?.let { it2 ->
-                viewModel.getDirection(
-                    it, it1, it2
-                )
+            needDirection = false
+            placeMarkerOnMap(it1, "destination")
+            if (customer != null) {
+                placeMarkerOnMap(customer!!, "customer")
             }
+            viewModel.getDirection(
+                it, it1, customer
+            )
         } }
+    }
+
+    private fun requestDirectionIfNeeded() {
+        if (dest != null && needDirection) {
+            requestDirection()
+        }
     }
 
     override fun onResume() {
@@ -475,10 +509,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
                 map.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 12f))
 //                map.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 12f))
 
-                if (needDirection) {
-                    needDirection = false
-                    requestDirection()
-                }
+                requestDirectionIfNeeded()
             }
         }
     }

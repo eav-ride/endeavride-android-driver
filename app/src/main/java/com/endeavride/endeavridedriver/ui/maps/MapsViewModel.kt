@@ -30,7 +30,7 @@ class MapsViewModel(
 
     private var searchJob: Job? = null
 
-    fun getDirection(origin: LatLng, dest: LatLng, waypoint: LatLng) {
+    fun getDirection(origin: LatLng, dest: LatLng, waypoint: LatLng?) {
         viewModelScope.launch {
             val result = dataSource.getDirection(origin, dest, waypoint)
             _mapDirectionResult.value = result
@@ -49,9 +49,9 @@ class MapsViewModel(
         }
     }
 
-    fun acceptRideRequest(rid: String) {
+    fun acceptRideRequest(rid: String, type: Int) {
         viewModelScope.launch {
-            val result = dataSource.acceptRequest(rid)
+            val result = dataSource.acceptRequest(rid, type)
             if (result is Result.Success) {
                 _currentRide.value = result.data
             }

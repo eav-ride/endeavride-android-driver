@@ -31,7 +31,7 @@ class MapDataSource {
         }
     }
 
-    suspend fun acceptRequest(rid: String): Result<Ride> {
+    suspend fun acceptRequest(rid: String, type: Int): Result<Ride> {
         try {
             val result = NetworkUtils.postRequest("r/d", Json.encodeToString(mapOf("rid" to rid)))
 
@@ -59,14 +59,23 @@ class MapDataSource {
         }
     }
 
-    suspend fun getDirection(origin: LatLng, dest: LatLng, waypoint: LatLng): MutableList<List<LatLng>> {
-        val result = NetworkUtils.getRequestWithFullPath("https://maps.googleapis.com/maps/api/directions/json",
+    suspend fun getDirection(origin: LatLng, dest: LatLng, waypoint: LatLng?): MutableList<List<LatLng>> {
+        val params = if (waypoint == null) {
+            listOf(
+                "origin" to "${origin.latitude},${origin.longitude}",
+                "destination" to "${dest.latitude},${dest.longitude}",
+                "key" to mapsKey,
+            )
+        } else {
             listOf(
                 "origin" to "${origin.latitude},${origin.longitude}",
                 "destination" to "${dest.latitude},${dest.longitude}",
                 "waypoints" to "${waypoint.latitude},${waypoint.longitude}",
                 "key" to mapsKey,
-            ))
+            )
+        }
+        val result = NetworkUtils.getRequestWithFullPath("https://maps.googleapis.com/maps/api/directions/json",
+            params)
         val path: MutableList<List<LatLng>> = ArrayList()
         if (result.resData == null) {
             return path
