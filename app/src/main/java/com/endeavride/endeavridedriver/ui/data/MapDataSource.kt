@@ -17,9 +17,9 @@ class MapDataSource {
 
     private val mapsKey = "AIzaSyAxxnazPy8mIAROs-chSCrDknDvzyB3Vho"
 
-    suspend fun requestAvailableRideTask(offset: Int, rid: String?): Result<Ride> {
+    suspend fun requestAvailableRideTask(offset: Int, rid: String?, receiveNew: Boolean): Result<Ride> {
         try {
-            val result = NetworkUtils.getRequest("r/d/request?", listOf("offset" to offset, "rid" to rid))
+            val result = NetworkUtils.getRequest("r/d/request?", listOf("offset" to offset, "rid" to rid, "receive_new" to receiveNew))
 
             if (result.resData != null) {
                 val ride = Json.decodeFromString<Ride>(result.resData)

@@ -37,10 +37,10 @@ class MapsViewModel(
         }
     }
 
-    fun requestAvailableRideTask(delayTime: Long = 0, offset: Int, rid: String?) {
+    fun requestAvailableRideTask(delayTime: Long = 0, offset: Int, rid: String?, receiveNew: Boolean = true) {
         viewModelScope.launch {
             delay(delayTime)
-            val result = dataSource.requestAvailableRideTask(offset, rid)
+            val result = dataSource.requestAvailableRideTask(offset, rid, receiveNew)
             if (result is Result.Success) {
                 _currentRide.value = result.data
             } else {
@@ -81,7 +81,6 @@ class MapsViewModel(
     fun checkIfCurrentRideAvailable() {
         viewModelScope.launch {
             val result = dataSource.checkIfCurrentRideAvailable()
-            println("#K_check current ride result: $result")
             if (result is Result.Success) {
                 _currentRide.value = result.data
             } else {

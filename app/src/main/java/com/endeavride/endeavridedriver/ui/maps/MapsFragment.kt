@@ -127,6 +127,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
     private var type: OrderType = OrderType.RIDE_SERVICE
     private var isAutoPollingEnabled = false
     private var isPostingDriveRecord = false
+    private var isAcceptingNewTask = true
 
     private val callback = OnMapReadyCallback { googleMap ->
         /**
@@ -186,6 +187,9 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
         viewModel.currentRide.observe(viewLifecycleOwner,
             Observer { ride ->
                 println("#K_current ride $ride")
+                if (!isAcceptingNewTask) {
+                    isAcceptingNewTask = true
+                }
                 if (ride == null) {
                     // add mark and send request when app closed if currently requesting task
                     this.dest = null
@@ -211,7 +215,6 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
                 super.onLocationResult(p0)
 
                 lastLocation = p0.lastLocation
-//                placeMarkerOnMap(LatLng(lastLocation.latitude, lastLocation.longitude))
                 lastLocation.let {
                     if (isPostingDriveRecord && it != null) {
                         map.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(it.latitude, it.longitude), 12f))
@@ -230,7 +233,12 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
     }
 
     private fun reloadData() {
+        Log.d(TAG, "Reloading data with status: $status")
         if (status == OrderStatus.ASSIGNING) {
+//            if (!isAcceptingNewTask) {
+//                viewModel.requestAvailableRideTask(0, offset, rid, false)
+//                return
+//            }
             requestButton.text = "Change Task"
             acceptButton.text = "Accept Task"
             textView.text = if (type == OrderType.HOME_SERVICE) {
@@ -361,7 +369,6 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
         } else if (status == OrderStatus.CANCELED) {
             Toast.makeText(requireContext(), "User has canceled the request!", Toast.LENGTH_SHORT).show()
             map.clear()
-            resetAttributes()
             defaultStatusActions()
         } else {
             // DEFAULT
@@ -381,6 +388,9 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
     private fun defaultStatusActions() {
         isPostingDriveRecord = false
         needDirection = true
+        rid = null
+        dest = null
+        customer = null
         if (isAutoPollingEnabled) {
             requestButton.text = "Requesting..."
             acceptButton.text = "Stop"
@@ -398,6 +408,8 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
             acceptButton.setOnClickListener {
                 map.clear()
                 resetAttributes()
+                isAutoPollingEnabled = false
+                isAcceptingNewTask = false
                 reloadData()
             }
 
@@ -408,6 +420,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
             actionButton.isVisible = true
             requestButton.isVisible = false
             acceptButton.isVisible = false
+            actionButton.isEnabled = isAcceptingNewTask
 
             actionButton.setOnClickListener {
                 map.clear()
@@ -534,7 +547,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener,
                 map.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 12f))
 //                map.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 12f))
 
-                requestDirectionIfNeeded()
+//                requestDirectionIfNeeded()
             }
         }
     }

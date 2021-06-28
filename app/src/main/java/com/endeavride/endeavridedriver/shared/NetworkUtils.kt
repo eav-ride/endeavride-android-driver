@@ -26,11 +26,11 @@ class NetworkUtils {
         suspend fun getRequestWithFullPath(path: String, parameters: Parameters?): RequestResultModel {
             val (request, response, result) = Fuel.get(path, parameters).awaitStringResponseResult()
             println(request)
-            println(response)
+//            println(response)
             val (bytes, error) = result
-            if (bytes != null) {
-                println("[response bytes] $bytes")
-            }
+//            if (bytes != null) {
+//                println("[response bytes] $bytes")
+//            }
             if (error != null) {
                 println("fuel get request error: $error")
             }
