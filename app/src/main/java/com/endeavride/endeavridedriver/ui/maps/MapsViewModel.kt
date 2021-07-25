@@ -1,6 +1,7 @@
 package com.endeavride.endeavridedriver.ui.maps
 
 import android.location.Location
+import android.util.Log
 import com.endeavride.endeavridedriver.ui.data.Result
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -19,6 +20,10 @@ import java.io.IOException
 class MapsViewModel(
     val dataSource: MapDataSource
 ) : ViewModel() {
+
+    companion object {
+        private const val TAG = "MapsViewModel"
+    }
     private val _mapDirectionResult = MutableLiveData<MutableList<List<LatLng>>>()
     val mapDirectionResult: LiveData<MutableList<List<LatLng>>> = _mapDirectionResult
 
@@ -27,8 +32,6 @@ class MapsViewModel(
 
     private val _driveRecordResult = MutableLiveData<IOException?>()
     val driveRecordResult: LiveData<IOException?> = _driveRecordResult
-
-    private var searchJob: Job? = null
 
     fun getDirection(origin: LatLng, dest: LatLng, waypoint: LatLng?) {
         viewModelScope.launch {
@@ -84,7 +87,7 @@ class MapsViewModel(
             if (result is Result.Success) {
                 _currentRide.value = result.data
             } else {
-                println("#K_current ride result error")
+                Log.e(TAG, "current ride result error")
             }
         }
     }

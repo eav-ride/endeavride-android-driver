@@ -33,15 +33,9 @@ class MainActivity : AppCompatActivity() {
         val navView: BottomNavigationView = binding.navView
 
         val navController = findNavController(R.id.nav_host_fragment_activity_main)
-        // Passing each menu ID as a set of Ids because each
-        // menu should be considered as top level destinations.
-        val appBarConfiguration = AppBarConfiguration(
-            setOf(
-                R.id.navigation_home, R.id.navigation_dashboard, R.id.navigation_notifications
-            )
-        )
-        setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
+        navView.visibility = View.GONE
+
         loginViewModel = ViewModelProvider(this, LoginViewModelFactory())
             .get(LoginViewModel::class.java)
 
@@ -50,9 +44,6 @@ class MainActivity : AppCompatActivity() {
                 loggedInUser ?: return@Observer
                 if (loggedInUser.displayName == "") {
                     navController.navigate(R.id.navigation_login)
-                    navView.visibility = View.GONE
-                } else {
-                    navView.visibility = View.VISIBLE
                 }
             })
         loginViewModel.loadUserInfoIfAvailable()
@@ -61,24 +52,21 @@ class MainActivity : AppCompatActivity() {
         val savedStateHandle = currentBackStackEntry.savedStateHandle
         savedStateHandle.getLiveData<Boolean>(LoginFragment.LOGIN_SUCCESSFUL)
             .observe(currentBackStackEntry, Observer { success ->
-                if (success) {
-                    navView.visibility = View.VISIBLE
-                }
             })
     }
 
     override fun onPause() {
         super.onPause()
-        println("#K_app on pause")
+        println("app on pause")
     }
 
     override fun onStop() {
         super.onStop()
-        println("#K_app on stop")
+        println("app on stop")
     }
 
     override fun onDestroy() {
-        println("#K_app on destroy")
+        println("app on destroy")
         super.onDestroy()
     }
 

@@ -63,6 +63,10 @@ class LoginViewModel(private val loginRepository: LoginRepository) : ViewModel()
         }
     }
 
+    fun logout() {
+        _loggedInUser.value = LoggedInUserView(displayName = "")
+    }
+
     // A placeholder username validation check
     private fun isUserNameValid(username: String): Boolean {
         return if (username.contains("@")) {

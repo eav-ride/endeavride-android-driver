@@ -86,15 +86,15 @@ class MapDataSource {
         if (routes.length() < 1) {
             return path
         }
-        println("#K_routes count: ${routes.length()}")
+        println("routes count: ${routes.length()}")
         val legs = routes.getJSONObject(0).getJSONArray("legs")
-        println("#K_legs count: ${legs.length()}")
+        println("legs count: ${legs.length()}")
         for (j in 0 until legs.length()) {
             val steps = legs.getJSONObject(j).getJSONArray("steps")
-            println("#K_steps count: ${steps.length()}")
+            println("steps count: ${steps.length()}")
             for (i in 0 until steps.length()) {
                 val points = steps.getJSONObject(i).getJSONObject("polyline").getString("points")
-//            Log.d("Test", "#K_points: $points")
+//            Log.d("Test", "points: $points")
                 path.add(PolyUtil.decode(points))
             }
         }

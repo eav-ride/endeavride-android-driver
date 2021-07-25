@@ -23,7 +23,7 @@
         android:layout_alignParentEnd="true"
         android:layout_marginStart="15dp"
         android:layout_marginEnd="15dp"
-        android:layout_marginBottom="65dp"
+        android:layout_marginBottom="28dp"
         android:alpha="0.9"
         android:background="@drawable/rounded_white_background"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -86,5 +86,15 @@
         android:text="Click 'Request Task' to start"
         app:layout_constraintStart_toStartOf="@+id/view"
         app:layout_constraintTop_toTopOf="@+id/view" />
+
+    <Button
+        android:id="@+id/logout_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="10dp"
+        android:text="Signout"
+        app:layout_constraintStart_toStartOf="@+id/map"
+        app:layout_constraintTop_toTopOf="@+id/map" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

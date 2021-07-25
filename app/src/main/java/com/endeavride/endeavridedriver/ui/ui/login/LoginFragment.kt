@@ -155,7 +155,7 @@ class LoginFragment : Fragment() {
     }
 
     private fun updateUiWithUser(model: LoggedInUserView) {
-        val welcome = getString(R.string.welcome) + model.displayName
+        val welcome = getString(R.string.welcome) + " " + model.displayName
 
         val appContext = context?.applicationContext ?: return
 
@@ -167,7 +167,7 @@ class LoginFragment : Fragment() {
 
     private fun showLoginFailed(@StringRes errorString: Int) {
         val appContext = context?.applicationContext ?: return
-        Log.e("LoginFragment", "#K_Login failed! $errorString")
+        Log.e("LoginFragment", "Login failed! $errorString")
         Toast.makeText(appContext, errorString, Toast.LENGTH_LONG).show()
     }
 
