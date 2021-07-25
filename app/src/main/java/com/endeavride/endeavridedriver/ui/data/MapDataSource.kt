@@ -15,7 +15,7 @@ import java.io.IOException
 
 class MapDataSource {
 
-    private val mapsKey = "AIzaSyAxxnazPy8mIAROs-chSCrDknDvzyB3Vho"
+    private val mapsKey = "AIzaSyBQLhQPNU5UFQczahI4ZHX4CReuH1D5o8U"
 
     suspend fun requestAvailableRideTask(offset: Int, rid: String?, receiveNew: Boolean): Result<Ride> {
         try {
